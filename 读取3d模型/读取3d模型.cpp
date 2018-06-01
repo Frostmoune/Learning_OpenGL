@@ -17,33 +17,36 @@ typedef OpenMesh::TriMesh_ArrayKernelT<> Mesh;
 
 Mesh myMesh;
 
-static GLuint showLine, showFlat;
-static const int radius[3] = { 950, 10, 20 };
-static int nowFile = 3;
-static float scale = 1;
-static int scaleFlag = 0;
-static bool middleMouseState = 0;
-static int patternChoose = 2;
-static float oldX = 0, oldY = 0;
-static float roundX = 0, roundY = PI / 2, roundDelta = PI / 90;
-static float centerX = 0.0, centerY = 0.0, centerZ = 0.0;
+static GLuint showLine, showFlat; // 显示模式控制
+static const int radius[3] = { 950, 10, 20 }; // 不同模型对应不同半径
+static int nowFile = 3; // 当前模型文件
+static float scale = 1; // 扩大/缩小倍数
+static int scaleFlag = 0; // 是否扩大/缩小
+static bool middleMouseState = 0; // 鼠标滚轮状态
+static int patternChoose = 2; // 显示模式选择
+static float oldX = 0, oldY = 0; // 之前的坐标
+static float roundX = 0, roundY = PI / 2, roundDelta = PI / 90; // 现在的坐标
+static float centerX = 0.0, centerY = 0.0, centerZ = 0.0; // 中心点坐标
 static float eyeX = radius[nowFile - 1] * cos(roundX) * cos(roundY);
 static float eyeY = radius[nowFile - 1] * sin(roundX);
-static float eyeZ = radius[nowFile - 1] * cos(roundX) * sin(roundY);
-static const string fileName[3] = { "Armadillo.off", "cactus.ply", "cow.obj" };
+static float eyeZ = radius[nowFile - 1] * cos(roundX) * sin(roundY); // 观察点坐标
+static const string fileName[3] = { "Armadillo.off", "cactus.ply", "cow.obj" }; // 模型路径
 
+// 更新观察点坐标
 inline void updateEye() {
 	eyeX = radius[nowFile - 1] * cos(roundX) * cos(roundY);
 	eyeY = radius[nowFile - 1] * sin(roundX);
 	eyeZ = radius[nowFile - 1] * cos(roundX) * sin(roundY);
 }
 
+// 更新中心点坐标
 inline void updateCenter() {
 	centerX = 0.0;
 	centerY = 0.0;
 	centerZ = 0.0;
 }
 
+// 读取模型文件
 void readFile(int fileIndex) {
 	nowFile = fileIndex + 1;
 	OpenMesh::IO::Options opt;
@@ -52,6 +55,7 @@ void readFile(int fileIndex) {
 		return;
 	}
 	cout << "Read successfully!\n";
+	// 得到顶点法向量
 	myMesh.request_vertex_normals();
 	if (!opt.check(OpenMesh::IO::Options::VertexNormal)) {
 		myMesh.request_face_normals();
@@ -67,6 +71,7 @@ void init() {
 	glEnable(GL_DEPTH_TEST);
 }
 
+// 画线
 void drawLines(float *a, float *b) {
 	glBegin(GL_LINES);
 	glVertex3fv(a);
@@ -74,6 +79,7 @@ void drawLines(float *a, float *b) {
 	glEnd();
 }
 
+// 画三角形
 void drawTriangle(Mesh::FaceIter f_it) {
 	glBegin(GL_TRIANGLES);
 	for (auto fv_it = myMesh.fv_iter(*f_it); fv_it.is_valid(); ++fv_it) {
@@ -83,13 +89,14 @@ void drawTriangle(Mesh::FaceIter f_it) {
 	glEnd();
 }
 
+// 画图
 inline void drawPicture() {
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 	showLine = glGenLists(1);
 	showFlat = glGenLists(1);
-	glNewList(showLine, GL_COMPILE);
-	glDisable(GL_LIGHTING);
+	glNewList(showLine, GL_COMPILE); // 画线List
+	glDisable(GL_LIGHTING); // 光照
 	glColor3f(0.1, 0.3, 0.8);
 	glLineWidth(1.5);
 	for (auto he_it = myMesh.halfedges_begin(); he_it != myMesh.halfedges_end(); ++he_it) {
@@ -97,7 +104,7 @@ inline void drawPicture() {
 		drawLines(myMesh.point(from_handle).data(), myMesh.point(to_handle).data());
 	}
 	glEndList();
-	glNewList(showFlat, GL_COMPILE);
+	glNewList(showFlat, GL_COMPILE); // 画图List
 	glEnable(GL_LIGHTING);
 	for (auto f_it = myMesh.faces_begin(); f_it != myMesh.faces_end(); ++f_it) {
 		drawTriangle(f_it);
@@ -105,6 +112,7 @@ inline void drawPicture() {
 	glEndList();
 }
 
+// 放大/缩小循环
 void scaleLoop() {
 	if (scaleFlag != 0) {
 		if (scaleFlag == 1 && scale < 3.8) {
@@ -123,6 +131,7 @@ void myDisplay() {
 	gluLookAt(eyeX, eyeY, eyeZ, 0, 0, 0, 0, 1.0, 0);
 	glTranslated(centerX, centerY, centerZ);
 	glScalef(scale, scale, scale);
+	// 选择显示模式
 	if(patternChoose == 1 || patternChoose == 2)glCallList(showFlat);
 	if(patternChoose == 0 || patternChoose == 2)glCallList(showLine);
 	glutSwapBuffers();
@@ -138,6 +147,7 @@ void reshape(int w, int h) {
 	glMatrixMode(GL_MODELVIEW);
 }
 
+// 鼠标按键控制
 void myMouse(int button, int state, int x, int y) {
 	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
 		scaleFlag = 1;
@@ -160,6 +170,7 @@ void myMouse(int button, int state, int x, int y) {
 	glutPostRedisplay();
 }
 
+// 鼠标移动控制
 void myMouseMove(int x, int y) {
 	if (middleMouseState) {
 		if (oldX != -1 && oldY != -1 && x != -1 && y != -1) {
@@ -187,11 +198,12 @@ void myMouseMove(int x, int y) {
 			updateEye();
 			oldX = x;
 			oldY = y;
-		}
+		} // 观察点在一个圆上运动
 		glutPostRedisplay();
 	}
 }
 
+// 键盘控制
 void myKeyboard(unsigned char key, int x, int y) {
 	switch (key) {
 		case '1':
@@ -284,7 +296,7 @@ int main(int argc, char * argv[]) {
 	init();
 	readFile(2);
 	drawPicture();
-	cout << "1��File 1\n2��File 2\n3��File 3\n";
+	cout << "1¡¢File 1\n2¡¢File 2\n3¡¢File 3\n";
 	glutKeyboardFunc(myKeyboard);
 	glutMouseFunc(myMouse);
 	glutMotionFunc(myMouseMove);
